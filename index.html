@@ -617,7 +617,7 @@ function fillLabels(svg){
     const c=getCap(l.code),rows=cap
       ?[["rb",c.ruby,.5],["nm",c.name,1],["rb sub",shortRuby(l.code),.4],["sub",`（${shortName(l.code)}）`,.65]]
       :[["rb",shortRuby(l.code),.5],["nm",shortName(l.code),1]];
-    const gap=.06,total=rows.reduce((a,r)=>a+r[2],0)+gap*(rows.length-1);
+    const gap=.22,total=rows.reduce((a,r)=>a+r[2],0)+gap*(rows.length-1);
     let top=-total/2;
     l.g.innerHTML=rows.map(([cls,t,k])=>{const mid=top+k/2;top+=k+gap;
       return`<text class="${cls}" x="${l.cx.toFixed(1)}" y="${l.cy.toFixed(1)}" dy="${(mid/k).toFixed(3)}em">${t}</text>`}).join("");
