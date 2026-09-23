@@ -260,6 +260,10 @@ body.mode-learn .order-group{display:none}
   .card{border-radius:20px;box-shadow:0 4px 0 #d6e5f2,0 10px 22px rgba(31,90,150,.07)}
   .map-card{flex:1;min-height:150px;padding:6px}
   .map-wrap{height:auto;min-height:0;border-radius:15px}
+  /* 覚えるモード: 地図の上下の余白をトリム（枠を地図の縦横比に合わせ、余った高さはボタン側へ） */
+  #learn .map-card{flex:0 1 auto}
+  #learn .map-wrap{aspect-ratio:1/1}
+  #learn .info{margin-top:auto}
   .info{padding:12px;gap:10px;flex:none}
   .pref-hero{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;text-align:left;padding:0}
   .num-badge{width:50px;height:50px;font-size:1.25rem}
