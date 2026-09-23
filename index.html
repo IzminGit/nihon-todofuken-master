@@ -112,7 +112,7 @@ body.mode-learn .order-group{display:none}
 @keyframes glow{50%{fill:#ffe98f}}
 .pref-labels{pointer-events:none;font-family:var(--font);font-weight:800;fill:#28405a;stroke:rgba(255,255,255,.92);stroke-linejoin:round;paint-order:stroke;text-anchor:middle;dominant-baseline:central}
 .pref-labels text{stroke-width:.16em}
-.pref-labels .rb{font-size:40%;fill:#1f6fcf;stroke-width:.3em;letter-spacing:.02em}
+.pref-labels .rb{font-size:50%;fill:#1f6fcf;stroke-width:.3em;letter-spacing:.02em}
 .pref-labels .lbl.hide{display:none}
 .pref-labels .lbl.out text{fill:#8a9bab}
 .pref-labels .lbl.now .nm{fill:#8a4b00}
@@ -586,17 +586,19 @@ function addLabels(svg){
   svg._labels=range(1,47).map(code=>{
     const b=BOX[code].main,cx=b.x+b.w/2,cy=b.y+b.h/2,name=shortName(code),ruby=shortRuby(code);
     const lg=document.createElementNS(NS,"g");lg.setAttribute("class","lbl");
-    /* 県名を少し下げ、その上にふりがな（ふりがなは県名の40%の大きさ） */
-    lg.innerHTML=`<text class="rb" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" dy="-1.4em">${ruby}</text><text class="nm" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" dy=".2em">${name}</text>`;
+    /* 県名を少し下げ、その上にふりがな（ふりがなは県名の半分の大きさ） */
+    lg.innerHTML=`<text class="rb" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" dy="-1.22em">${ruby}</text><text class="nm" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" dy=".2em">${name}</text>`;
     g.appendChild(lg);
-    return{code,g:lg,cx,cy,area:b.w*b.h,wEm:Math.max(name.length,ruby.length*.4)};
+    return{code,g:lg,cx,cy,area:b.w*b.h,wEm:Math.max(name.length,ruby.length*.5)};
   });
   svg.appendChild(g);svg._labelG=g;
 }
 function updateLabels(svg){
   const L=svg._labels,v=svg._vb;if(!L||!v)return;
   const r=svg.getBoundingClientRect();if(!r.width)return;
-  const upp=Math.max(v.w/r.width,v.h/r.height),fs=(r.width<500?33:39)*upp;
+  /* 文字の大きさは縮尺に合わせる：全国表示で小さめ（スマホ14px）→ 拡大するほど大きく（最大でその1.6倍） */
+  const zoom=Math.max(FULL_BOX.w/v.w,FULL_BOX.h/v.h),px=(r.width<500?14:17)*Math.min(1.6,Math.max(1,Math.pow(zoom,.35)));
+  const upp=Math.max(v.w/r.width,v.h/r.height),fs=px*upp;
   svg._labelG.setAttribute("font-size",fs.toFixed(2));
   const list=currentList(),inList=new Set(list),target=svg._paint?.code,focus=list.length<47;
   const order=L.slice().sort((a,b)=>(b.code===target)-(a.code===target)||(inList.has(b.code)-inList.has(a.code))||b.area-a.area);
