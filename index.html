@@ -544,8 +544,14 @@ function mapPaint(id,code,how="target",wrongCode=null){
   if(el){const hadFocus=document.activeElement===el;el.classList.add(how);el.parentNode.appendChild(el);if(hadFocus)el.focus({preventScroll:true})}
   /* 同じ県のままなら（答えた直後・画面回転など）自分で拡大した表示をそのまま残す */
   const keep=svg._userZoom&&svg._paint&&svg._paint.code===code&&svg._paint.region===state.region;
+  /* 覚えるモードで県が変わったとき（つぎ・まえ・地図タップ）は、自分で決めた縮尺のまま新しい県を真ん中に */
+  const follow=!keep&&id==="japanMap"&&svg._userZoom&&BOX&&code&&svg._paint&&svg._paint.region===state.region;
   svg._paint={code,how,region:state.region};
   if(keep){placeRing(svg,code,svg._vb,how);return}
+  if(follow){
+    const v=svg._vb,b=BOX[code].main,to=clampPan({x:b.x+b.w/2-v.w/2,y:b.y+b.h/2-v.h/2,w:v.w,h:v.h});
+    animateViewBox(svg,to);placeRing(svg,code,to,how);return;
+  }
   svg._userZoom=false;
   const view=viewFor(code);animateViewBox(svg,view);placeRing(svg,code,view,how);
 }
