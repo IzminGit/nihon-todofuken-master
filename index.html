@@ -111,9 +111,11 @@ body.mode-learn .order-group{display:none}
 .geo-map-host .prefecture.wrong{fill:#ffb3c0!important;stroke:#d9485f!important;stroke-width:2px!important}
 @keyframes glow{50%{fill:#ffe98f}}
 .pref-labels{pointer-events:none;font-family:var(--font);font-weight:800;fill:#28405a;stroke:rgba(255,255,255,.92);stroke-linejoin:round;paint-order:stroke;text-anchor:middle;dominant-baseline:central}
-.pref-labels text.hide{display:none}
-.pref-labels text.out{fill:#8a9bab}
-.pref-labels text.now{fill:#8a4b00}
+.pref-labels text{stroke-width:.16em}
+.pref-labels .rb{font-size:40%;fill:#1f6fcf;stroke-width:.3em;letter-spacing:.02em}
+.pref-labels .lbl.hide{display:none}
+.pref-labels .lbl.out text{fill:#8a9bab}
+.pref-labels .lbl.now .nm{fill:#8a4b00}
 .target-ring circle{fill:none;vector-effect:non-scaling-stroke;pointer-events:none}
 .target-ring .ring{stroke:#ff9f1c;stroke-width:3px}
 .target-ring .halo{stroke:#ffb347;stroke-width:3px;transform-box:fill-box;transform-origin:center;animation:halo 1.6s ease-out infinite}
@@ -453,6 +455,7 @@ const getPref=code=>PREFS[code-1];
 const getCap=code=>CAPITALS[code-1];
 /* 地図に書く短い県名（北海道以外は「都・府・県」を省く） */
 const shortName=code=>code===1?"北海道":getPref(code).name.replace(/[都府県]$/,"");
+const shortRuby=code=>code===1?"ほっかいどう":getPref(code).ruby.replace(/(けん|ふ|と)$/,"");
 const pad=n=>String(n).padStart(2,"0");
 const facts={1:"日本でいちばん北にある都道府県。道庁所在地は札幌市。",2:"本州でいちばん北にある県。県庁所在地は青森市。",3:"北海道のすぐ南にある県。県庁所在地は盛岡市。",4:"東北地方の太平洋側にある県。県庁所在地は仙台市。",5:"日本海側にある東北地方の県。県庁所在地は秋田市。",6:"山形県のとなりには日本海があるよ。県庁所在地は山形市。",7:"東北地方のいちばん南にある県。県庁所在地は福島市。",8:"関東地方の太平洋側にある県。県庁所在地は水戸市。",9:"関東地方の北部にある県。県庁所在地は宇都宮市。",10:"群馬県は海のない内陸県。県庁所在地は前橋市。",11:"東京の北にある県。県庁所在地はさいたま市。",12:"関東地方の東側にある県。県庁所在地は千葉市。",13:"日本の首都がある都。東京都庁があるよ。",14:"東京の南にある県。県庁所在地は横浜市。",15:"日本海側に細長く広がる県。県庁所在地は新潟市。",16:"立山黒部アルペンルートでも知られる県。県庁所在地は富山市。",17:"能登半島がある県。県庁所在地は金沢市。",18:"日本海側にある県。県庁所在地は福井市。",19:"富士山の北西側にある県。県庁所在地は甲府市。",20:"日本アルプスがある内陸県。県庁所在地は長野市。",21:"日本のほぼ中央にある内陸県。県庁所在地は岐阜市。",22:"富士山の南側に広がる県。県庁所在地は静岡市。",23:"中部地方の太平洋側にある県。県庁所在地は名古屋市。",24:"紀伊半島の東側にある県。県庁所在地は津市。",25:"日本最大の湖、琵琶湖がある県。県庁所在地は大津市。",26:"京都市がある府。歴史的な建物が多い地域だよ。",27:"大阪市がある府。近畿地方の中心のひとつだよ。",28:"日本海から瀬戸内海まで広がる県。県庁所在地は神戸市。",29:"紀伊半島の内陸側にある県。県庁所在地は奈良市。",30:"紀伊半島の南側にある県。県庁所在地は和歌山市。",31:"中国地方の日本海側にある県。県庁所在地は鳥取市。",32:"中国地方の日本海側で東西に長い県。県庁所在地は松江市。",33:"中国地方の東側にある県。県庁所在地は岡山市。",34:"中国地方の瀬戸内海側にある県。県庁所在地は広島市。",35:"本州のいちばん西にある県。県庁所在地は山口市。",36:"四国の東側にある県。県庁所在地は徳島市。",37:"四国の北東側にある県。県庁所在地は高松市。",38:"四国の北西側にある県。県庁所在地は松山市。",39:"四国の南側にある県。県庁所在地は高知市。",40:"九州の北側にある県。県庁所在地は福岡市。",41:"九州の北西部にある県。県庁所在地は佐賀市。",42:"九州の西側にある県。県庁所在地は長崎市。",43:"九州の中央部にある県。県庁所在地は熊本市。",44:"九州の東側にある県。県庁所在地は大分市。",45:"九州の東側で南北に長い県。県庁所在地は宮崎市。",46:"九州の南側にある県。県庁所在地は鹿児島市。",47:"日本のいちばん南西にある県。県庁所在地は那覇市。"};
 
@@ -579,28 +582,31 @@ function setViewBox(svg,b){svg.setAttribute("viewBox",`${b.x.toFixed(1)} ${b.y.t
 /* 覚えるモードの地図の県名：拡大しても文字の大きさは同じ。重なるときは大きい県・えらんでいる地方を優先して表示 */
 function addLabels(svg){
   if(!BOX)return;
-  const g=document.createElementNS("http://www.w3.org/2000/svg","g");g.setAttribute("class","pref-labels");g.setAttribute("aria-hidden","true");
+  const NS="http://www.w3.org/2000/svg",g=document.createElementNS(NS,"g");g.setAttribute("class","pref-labels");g.setAttribute("aria-hidden","true");
   svg._labels=range(1,47).map(code=>{
-    const b=BOX[code].main,t=document.createElementNS("http://www.w3.org/2000/svg","text");
-    t.setAttribute("x",(b.x+b.w/2).toFixed(1));t.setAttribute("y",(b.y+b.h/2).toFixed(1));t.textContent=shortName(code);g.appendChild(t);
-    return{code,t,cx:b.x+b.w/2,cy:b.y+b.h/2,area:b.w*b.h,len:shortName(code).length};
+    const b=BOX[code].main,cx=b.x+b.w/2,cy=b.y+b.h/2,name=shortName(code),ruby=shortRuby(code);
+    const lg=document.createElementNS(NS,"g");lg.setAttribute("class","lbl");
+    /* 県名を少し下げ、その上にふりがな（ふりがなは県名の40%の大きさ） */
+    lg.innerHTML=`<text class="rb" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" dy="-1.4em">${ruby}</text><text class="nm" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" dy=".2em">${name}</text>`;
+    g.appendChild(lg);
+    return{code,g:lg,cx,cy,area:b.w*b.h,wEm:Math.max(name.length,ruby.length*.4)};
   });
   svg.appendChild(g);svg._labelG=g;
 }
 function updateLabels(svg){
   const L=svg._labels,v=svg._vb;if(!L||!v)return;
   const r=svg.getBoundingClientRect();if(!r.width)return;
-  const upp=Math.max(v.w/r.width,v.h/r.height),fs=(r.width<500?11:13)*upp;
-  svg._labelG.setAttribute("font-size",fs.toFixed(2));svg._labelG.setAttribute("stroke-width",(3.2*upp).toFixed(2));
+  const upp=Math.max(v.w/r.width,v.h/r.height),fs=(r.width<500?33:39)*upp;
+  svg._labelG.setAttribute("font-size",fs.toFixed(2));
   const list=currentList(),inList=new Set(list),target=svg._paint?.code,focus=list.length<47;
   const order=L.slice().sort((a,b)=>(b.code===target)-(a.code===target)||(inList.has(b.code)-inList.has(a.code))||b.area-a.area);
   const placed=[];
   for(const l of order){
-    const w=l.len*fs*1.02/2+fs*.15,h=fs*.62;
+    const w=l.wEm*fs/2+fs*.1,h=fs*.74;
     const inView=l.cx>v.x&&l.cx<v.x+v.w&&l.cy>v.y&&l.cy<v.y+v.h;
     const ok=inView&&!placed.some(p=>Math.abs(p.cx-l.cx)<p.w+w&&Math.abs(p.cy-l.cy)<p.h+h);
     if(ok)placed.push({cx:l.cx,cy:l.cy,w,h});
-    l.t.classList.toggle("hide",!ok);l.t.classList.toggle("out",focus&&!inList.has(l.code));l.t.classList.toggle("now",l.code===target);
+    l.g.classList.toggle("hide",!ok);l.g.classList.toggle("out",focus&&!inList.has(l.code));l.g.classList.toggle("now",l.code===target);
   }
 }
 function animateViewBox(svg,to){
