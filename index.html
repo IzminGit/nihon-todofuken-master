@@ -297,9 +297,12 @@ body.mode-learn .order-group{display:none}
   .answers{gap:8px}
   .answer{min-height:60px;font-size:1.15rem;padding:8px 6px 6px}
   .answer .key{width:19px;height:19px;font-size:.7rem;left:7px;top:6px}
-  .feedback-row{min-height:48px}
-  .feedback{font-size:1rem}
-  .feedback small{font-size:.78rem}
+  /* 回答の前後でカードの高さを変えない（高さが変わると地図の縮尺が変わってガタつく） */
+  .feedback-row{height:62px;min-height:0;overflow:hidden}
+  .feedback{font-size:.95rem;line-height:1.3;flex:1;min-width:0}
+  .feedback small{font-size:.74rem;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .nq-long{display:none}
+  .q-title h2{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #nextQuestion{padding:11px 14px;font-size:1rem}
   .stamp{font-size:1.9rem}
   .records{position:fixed;inset:0;z-index:70;margin:0;border-radius:0;overflow:auto;display:none;padding:16px 14px 30px}
@@ -392,7 +395,7 @@ body.mode-learn .order-group{display:none}
         <div class="answers" id="answers"></div>
         <div class="feedback-row">
           <div class="feedback" id="feedback" aria-live="polite"></div>
-          <button class="btn btn-primary" data-sfx="own" id="nextQuestion" type="button" hidden>つぎの問題 →</button>
+          <button class="btn btn-primary" data-sfx="own" id="nextQuestion" type="button" hidden>つぎ<span class="nq-long">の問題</span> →</button>
         </div>
       </div>
     </div>
@@ -881,14 +884,14 @@ function answer(code,btn){
     sfx("correct");if(state.streak>=3)sfx("streak");
   }else{
     state.streak=0;btn.classList.add("wrong");
-    fb.innerHTML=isCap()?`おしい！ せいかいは ${getCap(target).name}<small>${getCap(code).name}は ${getPref(code).name}（うすい赤の県）の県庁所在地だよ。つぎはきっとできる！</small>`:`おしい！ せいかいは ${p.name}<small>${getPref(code).name}は うすい赤の県だよ。つぎはきっとできる！</small>`;fb.className="feedback bad";
+    fb.innerHTML=isCap()?`おしい！ せいかいは ${getCap(target).name}<small>${getCap(code).name}は ${getPref(code).name}（うすい赤の県）の県庁所在地だよ</small>`:`おしい！ せいかいは ${p.name}<small>${getPref(code).name}は うすい赤の県だよ。つぎはきっとできる！</small>`;fb.className="feedback bad";
     stamp.textContent="おしい！";stamp.className="stamp bad";
     mapPaint("quizMap",target,"correct",code);
     sfx("wrong");
   }
   void stamp.offsetWidth;stamp.classList.add("show");
   $("quizBar").style.width=((round.i+1)/round.deck.length*100)+"%";
-  const nb=$("nextQuestion");nb.textContent=round.i===round.deck.length-1?"けっかを見る 🏁":"つぎの問題 →";nb.hidden=false;
+  const nb=$("nextQuestion");nb.innerHTML=round.i===round.deck.length-1?"けっか<span class=\"nq-long\">を見る</span> 🏁":"つぎ<span class=\"nq-long\">の問題</span> →";nb.hidden=false;
   save();
   const sk=$("quizStreak");sk.classList.remove("bump");void sk.offsetWidth;if(good)sk.classList.add("bump");
   nb.focus({preventScroll:true});
