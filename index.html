@@ -38,7 +38,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:4px solid #ffbf00;outline-
 .visually-hidden{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ---------- ヘッダー ---------- */
-.topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid #dbe8f4}
+.topbar{position:sticky;top:0;z-index:30;padding-top:env(safe-area-inset-top,0px);background:rgba(255,255,255,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid #dbe8f4}
 .topbar-inner{max-width:1180px;margin:auto;display:flex;align-items:center;gap:16px;padding:12px 20px}
 .brand{display:flex;align-items:center;gap:12px}
 .logo{width:50px;height:50px;border-radius:16px;background:linear-gradient(140deg,#4aa6f5,#1f6fd6);display:grid;place-items:center;font-size:28px;box-shadow:0 4px 0 #1553a6;flex:none}
@@ -264,7 +264,7 @@ body.mode-learn .order-group{display:none}
 /* ---------- スマートフォン ---------- */
 @media (max-width:800px){
   html,body{height:100%;overflow:hidden}
-  body{height:100dvh;display:flex;flex-direction:column;background-attachment:scroll}
+  body{height:100dvh;height:var(--app-h,100dvh);display:flex;flex-direction:column;background-attachment:scroll}
   .topbar{flex:none}
   .topbar-inner{padding:6px 8px 6px 10px;gap:8px;min-height:56px}
   .brand,.stats{display:none}
@@ -306,6 +306,11 @@ body.mode-learn .order-group{display:none}
   .records.open{display:block}
   .records-close{display:inline-flex}
   .rec-tiles{grid-template-columns:repeat(2,1fr)}
+}
+/* iPhone の Safari（iOS 26〜）はアドレスバーが画面の下に浮いて、ページの上にかぶさる。
+   縦向きのときは、そのぶん下をあけてボタンがバーの裏にかくれないようにする */
+@media (max-width:800px) and (orientation:portrait){
+  html.ios-float-bar .app{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 56px)}
 }
 @media (max-width:800px) and (max-height:700px){
   .pref-name{font-size:1.7rem}
@@ -434,6 +439,16 @@ body.mode-learn .order-group{display:none}
 
 <script>
 "use strict";
+/* ===== 機種・ブラウザに合わせた画面の高さ ===== */
+(function(){
+  const ua=navigator.userAgent,v=ua.match(/Version\/(\d+)/);
+  const iPhoneSafari=/iPhone|iPod/.test(ua)&&/Safari/.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|Line\/|FBAN|Instagram/.test(ua);
+  if(iPhoneSafari&&!navigator.standalone&&v&&Number(v[1])>=26)document.documentElement.classList.add("ios-float-bar");
+  /* 実際に見えている高さ（アドレスバー・キーボードをのぞく）に合わせてレイアウトする */
+  const vv=window.visualViewport;
+  const fit=()=>{const h=Math.round(vv?vv.height*(vv.scale||1):window.innerHeight);if(h>0)document.documentElement.style.setProperty("--app-h",h+"px")};
+  fit();(vv||window).addEventListener("resize",fit);window.addEventListener("orientationchange",()=>setTimeout(fit,300));
+})();
 /* ===== 都道府県データ（JIS都道府県コード順） ===== */
 const PREFS=[["北海道","ほっかいどう"],["青森県","あおもりけん"],["岩手県","いわてけん"],["宮城県","みやぎけん"],["秋田県","あきたけん"],["山形県","やまがたけん"],["福島県","ふくしまけん"],["茨城県","いばらきけん"],["栃木県","とちぎけん"],["群馬県","ぐんまけん"],["埼玉県","さいたまけん"],["千葉県","ちばけん"],["東京都","とうきょうと"],["神奈川県","かながわけん"],["新潟県","にいがたけん"],["富山県","とやまけん"],["石川県","いしかわけん"],["福井県","ふくいけん"],["山梨県","やまなしけん"],["長野県","ながのけん"],["岐阜県","ぎふけん"],["静岡県","しずおかけん"],["愛知県","あいちけん"],["三重県","みえけん"],["滋賀県","しがけん"],["京都府","きょうとふ"],["大阪府","おおさかふ"],["兵庫県","ひょうごけん"],["奈良県","ならけん"],["和歌山県","わかやまけん"],["鳥取県","とっとりけん"],["島根県","しまねけん"],["岡山県","おかやまけん"],["広島県","ひろしまけん"],["山口県","やまぐちけん"],["徳島県","とくしまけん"],["香川県","かがわけん"],["愛媛県","えひめけん"],["高知県","こうちけん"],["福岡県","ふくおかけん"],["佐賀県","さがけん"],["長崎県","ながさきけん"],["熊本県","くまもとけん"],["大分県","おおいたけん"],["宮崎県","みやざきけん"],["鹿児島県","かごしまけん"],["沖縄県","おきなわけん"]].map(([name,ruby],i)=>({code:i+1,name,ruby}));
 /* 県庁所在地（東京都は都庁のある新宿区） */
