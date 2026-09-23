@@ -165,6 +165,8 @@ body.mode-learn .order-group{display:none}
 /* ---------- 答えるモード ---------- */
 .qcard{display:flex;flex-direction:column;gap:14px}
 .q-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.restart-btn{margin-left:auto;border:2px solid var(--line,#e3eaf1);background:#fff;color:var(--muted);border-radius:999px;padding:3px 12px;font:inherit;font-weight:800;font-size:.9rem;cursor:pointer;white-space:nowrap;touch-action:manipulation}
+.restart-btn:hover{color:var(--orange-dark);border-color:#ffd7b0}
 .q-count{background:var(--orange-soft);color:var(--orange-dark);border-radius:999px;padding:3px 14px;font-weight:800}
 .streak{background:#fff;border:2px solid #ffd7b0;color:#e0600b;border-radius:999px;padding:2px 12px;font-weight:800;white-space:nowrap}
 .streak.zero{border-color:var(--line);color:var(--muted)}
@@ -293,7 +295,10 @@ body.mode-learn .order-group{display:none}
   .nav .btn{padding:13px 8px;font-size:1.15rem}
   .qcard{padding:10px 12px 12px;gap:8px;flex:none}
   .q-title h2{font-size:1.25rem}
-  .q-head{order:-1}
+  .q-head{order:-1;gap:6px}
+  .q-count,.streak{white-space:nowrap;padding-left:9px;padding-right:9px}
+  .rs-long{display:none}
+  .restart-btn{font-size:.8rem;padding:3px 9px;min-width:0;overflow:hidden;text-overflow:ellipsis}
   .answers{gap:8px}
   .answer{min-height:60px;font-size:1.15rem;padding:8px 6px 6px}
   .answer .key{width:19px;height:19px;font-size:.7rem;left:7px;top:6px}
@@ -389,7 +394,7 @@ body.mode-learn .order-group{display:none}
         <div class="map-wrap"><div id="quizMap" class="geo-map-host"></div><div class="stamp" id="stamp" aria-hidden="true"></div></div>
       </div>
       <div class="card qcard">
-        <div class="q-head"><span class="q-count" id="quizProgress">第1問</span><span class="streak zero" id="quizStreak">🔥 0連続</span></div>
+        <div class="q-head"><span class="q-count" id="quizProgress">第1問</span><button class="restart-btn" id="restartQuiz" type="button" aria-label="さいしょから">↺ さいしょ<span class="rs-long">から</span></button><span class="streak zero" id="quizStreak">🔥 0連続</span></div>
         <div class="qbar" aria-hidden="true"><i id="quizBar" style="width:0"></i></div>
         <div class="q-title"><h2 id="quizTitle">この県はどこ？</h2><div class="q-hint" id="quizHint"><i></i>地図の黄色い県を選んでね！</div></div>
         <div class="answers" id="answers"></div>
@@ -896,6 +901,13 @@ function answer(code,btn){
   const sk=$("quizStreak");sk.classList.remove("bump");void sk.offsetWidth;if(good)sk.classList.add("bump");
   nb.focus({preventScroll:true});
 }
+/* 答えるモードを最初から（とちゅうなら確認してから） */
+function restartQuiz(){
+  if(!round.i&&!round.answered){startRound();return}
+  showModal({emoji:"↺",title:"さいしょから やりなおす？",text:`いまは 第${round.i+1}問 だよ`,buttons:[
+    {label:"つづける",cls:"btn-ghost",fn:()=>{}},
+    {label:"さいしょから",cls:"btn-primary quizcolor",fn:startRound}]});
+}
 function nextQuestion(){if(!round.answered)return;round.i++;if(round.i>=round.deck.length)showResult();else{sfx("next");newQuestion()}}
 function showResult(){
   const n=round.deck.length,s=round.score,ratio=s/n,stars=ratio===1?3:ratio>=.7?2:1;
@@ -1006,6 +1018,7 @@ $("speakBtn").addEventListener("click",speak);
 if(!("speechSynthesis" in window))$("speakBtn").hidden=true;
 $("nextQuestion").addEventListener("click",nextQuestion);
 $("soundBtn").addEventListener("click",toggleSound);
+$("restartQuiz").addEventListener("click",restartQuiz);
 /* そのほかのボタンは「ポン」とタップ音 */
 document.addEventListener("click",e=>{const b=e.target.closest("button");if(b&&!b.disabled&&b.dataset.sfx!=="own")sfx("tap")});
 $("clearData").addEventListener("click",clearData);
