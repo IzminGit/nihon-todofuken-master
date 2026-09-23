@@ -113,6 +113,8 @@ body.mode-learn .order-group{display:none}
 .pref-labels{pointer-events:none;font-family:var(--font);font-weight:800;fill:#28405a;stroke:rgba(255,255,255,.92);stroke-linejoin:round;paint-order:stroke;text-anchor:middle;dominant-baseline:central}
 .pref-labels text{stroke-width:.16em}
 .pref-labels .rb{font-size:50%;fill:#1f6fcf;stroke-width:.3em;letter-spacing:.02em}
+.pref-labels .sub{font-size:65%;fill:#5b7085;stroke-width:.24em}
+.pref-labels .rb.sub{font-size:40%;fill:#6f8fb3;stroke-width:.34em}
 .pref-labels .lbl.hide{display:none}
 .pref-labels .lbl.out text{fill:#8a9bab}
 .pref-labels .lbl.now .nm{fill:#8a4b00}
@@ -584,17 +586,29 @@ function addLabels(svg){
   if(!BOX)return;
   const NS="http://www.w3.org/2000/svg",g=document.createElementNS(NS,"g");g.setAttribute("class","pref-labels");g.setAttribute("aria-hidden","true");
   svg._labels=range(1,47).map(code=>{
-    const b=BOX[code].main,cx=b.x+b.w/2,cy=b.y+b.h/2,name=shortName(code),ruby=shortRuby(code);
-    const lg=document.createElementNS(NS,"g");lg.setAttribute("class","lbl");
-    /* 県名を少し下げ、その上にふりがな（ふりがなは県名の半分の大きさ） */
-    lg.innerHTML=`<text class="rb" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" dy="-1.22em">${ruby}</text><text class="nm" x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" dy=".2em">${name}</text>`;
-    g.appendChild(lg);
-    return{code,g:lg,cx,cy,area:b.w*b.h,wEm:Math.max(name.length,ruby.length*.5)};
+    const b=BOX[code].main,lg=document.createElementNS(NS,"g");lg.setAttribute("class","lbl");g.appendChild(lg);
+    return{code,g:lg,cx:b.x+b.w/2,cy:b.y+b.h/2,area:b.w*b.h,wEm:1,hEm:1};
   });
   svg.appendChild(g);svg._labelG=g;
 }
+/* ラベルの中身：都道府県＝「ふりがな／県名」、県庁所在地＝「ふりがな／市の名前／県のふりがな／（県名）」
+   各行は [class, 文字, 県名(1em)に対する大きさ]。行の高さを積んで、全体がその県の真ん中にくるように並べる */
+function fillLabels(svg){
+  const cap=isCap();svg._labelTopic=state.topic;
+  svg._labels.forEach(l=>{
+    const c=getCap(l.code),rows=cap
+      ?[["rb",c.ruby,.5],["nm",c.name,1],["rb sub",shortRuby(l.code),.4],["sub",`（${shortName(l.code)}）`,.65]]
+      :[["rb",shortRuby(l.code),.5],["nm",shortName(l.code),1]];
+    const gap=.06,total=rows.reduce((a,r)=>a+r[2],0)+gap*(rows.length-1);
+    let top=-total/2;
+    l.g.innerHTML=rows.map(([cls,t,k])=>{const mid=top+k/2;top+=k+gap;
+      return`<text class="${cls}" x="${l.cx.toFixed(1)}" y="${l.cy.toFixed(1)}" dy="${(mid/k).toFixed(3)}em">${t}</text>`}).join("");
+    l.wEm=Math.max(...rows.map(r=>r[1].length*r[2]));l.hEm=total;
+  });
+}
 function updateLabels(svg){
   const L=svg._labels,v=svg._vb;if(!L||!v)return;
+  if(svg._labelTopic!==state.topic)fillLabels(svg);
   const r=svg.getBoundingClientRect();if(!r.width)return;
   /* 文字の大きさは縮尺に合わせる：全国表示で小さめ（スマホ14px）→ 拡大するほど大きく（最大でその1.6倍） */
   const zoom=Math.max(FULL_BOX.w/v.w,FULL_BOX.h/v.h),px=(r.width<500?14:17)*Math.min(1.6,Math.max(1,Math.pow(zoom,.35)));
@@ -604,7 +618,7 @@ function updateLabels(svg){
   const order=L.slice().sort((a,b)=>(b.code===target)-(a.code===target)||(inList.has(b.code)-inList.has(a.code))||b.area-a.area);
   const placed=[];
   for(const l of order){
-    const w=l.wEm*fs/2+fs*.1,h=fs*.74;
+    const w=l.wEm*fs/2+fs*.1,h=l.hEm*fs/2;
     const inView=l.cx>v.x&&l.cx<v.x+v.w&&l.cy>v.y&&l.cy<v.y+v.h;
     const ok=inView&&!placed.some(p=>Math.abs(p.cx-l.cx)<p.w+w&&Math.abs(p.cy-l.cy)<p.h+h);
     if(ok)placed.push({cx:l.cx,cy:l.cy,w,h});
@@ -895,7 +909,7 @@ function renderRegionChips(){
 }
 function setRegion(key){state.region=regionByKey(key).key;learnIndex=0;save();renderRegionChips();if(mode==="learn")renderLearn();else startRound()}
 function topicHTML(attr){return[["pref","🗾 都道府県"],["capital","🏯 県庁所在地"]].map(([k,l])=>`<button class="chip plain ${state.topic===k?"active":""}" type="button" ${attr}="${k}" aria-pressed="${state.topic===k}">${l}</button>`).join("")}
-function setTopic(t){state.topic=t==="capital"?"capital":"pref";save();renderRegionChips();if(mode==="learn")renderLearn();else startRound()}
+function setTopic(t){state.topic=t==="capital"?"capital":"pref";save();renderRegionChips();if(mode==="learn")renderLearn();else startRound();const s=$("japanMap")?.querySelector("svg");if(s)updateLabels(s)}
 function updateTopicText(){
   const cap=isCap();
   $("learnTabSub").textContent=cap?"県庁所在地を じゅんばんに":"地図をみながら じゅんばんに";
