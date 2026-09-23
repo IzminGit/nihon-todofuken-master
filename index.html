@@ -110,6 +110,10 @@ body.mode-learn .order-group{display:none}
 .geo-map-host .prefecture.correct{fill:#6fdc9f!important;stroke:#0f8f52!important;stroke-width:2.5px!important;animation:none}
 .geo-map-host .prefecture.wrong{fill:#ffb3c0!important;stroke:#d9485f!important;stroke-width:2px!important}
 @keyframes glow{50%{fill:#ffe98f}}
+.pref-labels{pointer-events:none;font-family:var(--font);font-weight:800;fill:#28405a;stroke:rgba(255,255,255,.92);stroke-linejoin:round;paint-order:stroke;text-anchor:middle;dominant-baseline:central}
+.pref-labels text.hide{display:none}
+.pref-labels text.out{fill:#8a9bab}
+.pref-labels text.now{fill:#8a4b00}
 .target-ring circle{fill:none;vector-effect:non-scaling-stroke;pointer-events:none}
 .target-ring .ring{stroke:#ff9f1c;stroke-width:3px}
 .target-ring .halo{stroke:#ffb347;stroke-width:3px;transform-box:fill-box;transform-origin:center;animation:halo 1.6s ease-out infinite}
@@ -137,6 +141,7 @@ body.mode-learn .order-group{display:none}
 .pref-hero{text-align:center;padding:4px 0 0}
 .num-badge{display:inline-grid;place-items:center;width:62px;height:62px;border-radius:50%;background:var(--blue);color:#fff;font-size:1.55rem;font-weight:800;box-shadow:0 4px 0 var(--blue-dark);font-variant-numeric:tabular-nums}
 .pref-text{min-width:0}
+.pref-sub{font-size:.95rem;font-weight:800;color:var(--muted);letter-spacing:.04em}
 .pref-name{font-size:clamp(2.5rem,4.6vw,3.7rem);font-weight:800;line-height:1.15;margin-top:10px;color:var(--ink);letter-spacing:.05em}
 .pref-ruby{font-size:1.3rem;font-weight:800;color:var(--blue);letter-spacing:.14em}
 .speak{margin-top:8px}
@@ -329,11 +334,12 @@ body.mode-learn .order-group{display:none}
 
 <main class="app">
   <nav class="mode-tabs" aria-label="モード">
-    <button class="tab active" type="button" data-mode="learn" aria-pressed="true"><span class="ico">📚</span><span><span class="t">覚えるモード</span><span class="s">地図をみながら じゅんばんに</span></span></button>
-    <button class="tab" type="button" data-mode="quiz" aria-pressed="false"><span class="ico">🎤</span><span><span class="t">答えるモード</span><span class="s">黄色い県はどこ？ 4たくクイズ</span></span></button>
+    <button class="tab active" type="button" data-mode="learn" aria-pressed="true"><span class="ico">📚</span><span><span class="t">覚えるモード</span><span class="s" id="learnTabSub">地図をみながら じゅんばんに</span></span></button>
+    <button class="tab" type="button" data-mode="quiz" aria-pressed="false"><span class="ico">🎤</span><span><span class="t">答えるモード</span><span class="s" id="quizTabSub">黄色い県はどこ？ 4たくクイズ</span></span></button>
   </nav>
 
   <div class="card controls">
+    <div class="ctrl-group"><span class="ctrl-label">おぼえるもの</span><span id="topicChips" class="ctrl-group"></span></div>
     <div class="ctrl-group"><span class="ctrl-label">どこをやる？</span><span id="regionChips" class="ctrl-group"></span></div>
     <div class="ctrl-group order-group"><span class="ctrl-label">出しかた</span><span id="orderChips" class="ctrl-group"></span></div>
   </div>
@@ -348,6 +354,7 @@ body.mode-learn .order-group{display:none}
         <div class="pref-hero">
           <div class="num-badge" id="learnNumber" aria-label="都道府県番号">01</div>
           <div class="pref-text">
+            <div class="pref-sub" id="learnSub" hidden></div>
             <div class="pref-name" id="learnName">北海道</div>
             <div class="pref-ruby" id="learnRuby">ほっかいどう</div>
           </div>
@@ -372,7 +379,7 @@ body.mode-learn .order-group{display:none}
       <div class="card qcard">
         <div class="q-head"><span class="q-count" id="quizProgress">第1問</span><span class="streak zero" id="quizStreak">🔥 0連続</span></div>
         <div class="qbar" aria-hidden="true"><i id="quizBar" style="width:0"></i></div>
-        <div class="q-title"><h2>この県はどこ？</h2><div class="q-hint"><i></i>地図の黄色い県を選んでね！</div></div>
+        <div class="q-title"><h2 id="quizTitle">この県はどこ？</h2><div class="q-hint" id="quizHint"><i></i>地図の黄色い県を選んでね！</div></div>
         <div class="answers" id="answers"></div>
         <div class="feedback-row">
           <div class="feedback" id="feedback" aria-live="polite"></div>
@@ -383,7 +390,7 @@ body.mode-learn .order-group{display:none}
   </section>
 
   <section class="card records" id="records" aria-label="学習記録">
-    <div class="records-head"><h2>📊 きろく</h2><button class="close-x records-close" id="recordsClose" type="button" aria-label="とじる">✕</button></div>
+    <div class="records-head"><h2 id="recordsTitle">📊 きろく</h2><button class="close-x records-close" id="recordsClose" type="button" aria-label="とじる">✕</button></div>
     <div class="rec-tiles" id="recordTiles"></div>
     <div class="legend"><span class="l0">まだ</span><span class="l1">覚えるモードで見た</span><span class="l2">クイズで正解した</span></div>
     <div class="rgroups" id="recordSummary"></div>
@@ -406,6 +413,8 @@ body.mode-learn .order-group{display:none}
       <button class="menu-mode active" type="button" data-menu-mode="learn">📚 覚える</button>
       <button class="menu-mode" type="button" data-menu-mode="quiz">🎤 答える</button>
     </div>
+    <div class="menu-title">おぼえるもの</div>
+    <div class="menu-chips" id="menuTopic"></div>
     <div class="menu-title">地方選択</div>
     <div class="menu-chips" id="menuRegions"></div>
     <div class="menu-title">クイズの出しかた</div>
@@ -423,6 +432,8 @@ body.mode-learn .order-group{display:none}
 "use strict";
 /* ===== 都道府県データ（JIS都道府県コード順） ===== */
 const PREFS=[["北海道","ほっかいどう"],["青森県","あおもりけん"],["岩手県","いわてけん"],["宮城県","みやぎけん"],["秋田県","あきたけん"],["山形県","やまがたけん"],["福島県","ふくしまけん"],["茨城県","いばらきけん"],["栃木県","とちぎけん"],["群馬県","ぐんまけん"],["埼玉県","さいたまけん"],["千葉県","ちばけん"],["東京都","とうきょうと"],["神奈川県","かながわけん"],["新潟県","にいがたけん"],["富山県","とやまけん"],["石川県","いしかわけん"],["福井県","ふくいけん"],["山梨県","やまなしけん"],["長野県","ながのけん"],["岐阜県","ぎふけん"],["静岡県","しずおかけん"],["愛知県","あいちけん"],["三重県","みえけん"],["滋賀県","しがけん"],["京都府","きょうとふ"],["大阪府","おおさかふ"],["兵庫県","ひょうごけん"],["奈良県","ならけん"],["和歌山県","わかやまけん"],["鳥取県","とっとりけん"],["島根県","しまねけん"],["岡山県","おかやまけん"],["広島県","ひろしまけん"],["山口県","やまぐちけん"],["徳島県","とくしまけん"],["香川県","かがわけん"],["愛媛県","えひめけん"],["高知県","こうちけん"],["福岡県","ふくおかけん"],["佐賀県","さがけん"],["長崎県","ながさきけん"],["熊本県","くまもとけん"],["大分県","おおいたけん"],["宮崎県","みやざきけん"],["鹿児島県","かごしまけん"],["沖縄県","おきなわけん"]].map(([name,ruby],i)=>({code:i+1,name,ruby}));
+/* 県庁所在地（東京都は都庁のある新宿区） */
+const CAPITALS=[["札幌市","さっぽろし"],["青森市","あおもりし"],["盛岡市","もりおかし"],["仙台市","せんだいし"],["秋田市","あきたし"],["山形市","やまがたし"],["福島市","ふくしまし"],["水戸市","みとし"],["宇都宮市","うつのみやし"],["前橋市","まえばしし"],["さいたま市","さいたまし"],["千葉市","ちばし"],["新宿区","しんじゅくく"],["横浜市","よこはまし"],["新潟市","にいがたし"],["富山市","とやまし"],["金沢市","かなざわし"],["福井市","ふくいし"],["甲府市","こうふし"],["長野市","ながのし"],["岐阜市","ぎふし"],["静岡市","しずおかし"],["名古屋市","なごやし"],["津市","つし"],["大津市","おおつし"],["京都市","きょうとし"],["大阪市","おおさかし"],["神戸市","こうべし"],["奈良市","ならし"],["和歌山市","わかやまし"],["鳥取市","とっとりし"],["松江市","まつえし"],["岡山市","おかやまし"],["広島市","ひろしまし"],["山口市","やまぐちし"],["徳島市","とくしまし"],["高松市","たかまつし"],["松山市","まつやまし"],["高知市","こうちし"],["福岡市","ふくおかし"],["佐賀市","さがし"],["長崎市","ながさきし"],["熊本市","くまもとし"],["大分市","おおいたし"],["宮崎市","みやざきし"],["鹿児島市","かごしまし"],["那覇市","なはし"]].map(([name,ruby])=>({name,ruby}));
 const range=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
 const REGIONS=[
   {key:"北海道",slug:"hokkaido",codes:[1]},
@@ -439,6 +450,9 @@ const REGION_LIST=[ALL,...REGIONS];
 const regionByKey=k=>REGION_LIST.find(r=>r.key===k)||ALL;
 const regionOf=code=>REGIONS.find(r=>r.codes.includes(code));
 const getPref=code=>PREFS[code-1];
+const getCap=code=>CAPITALS[code-1];
+/* 地図に書く短い県名（北海道以外は「都・府・県」を省く） */
+const shortName=code=>code===1?"北海道":getPref(code).name.replace(/[都府県]$/,"");
 const pad=n=>String(n).padStart(2,"0");
 const facts={1:"日本でいちばん北にある都道府県。道庁所在地は札幌市。",2:"本州でいちばん北にある県。県庁所在地は青森市。",3:"北海道のすぐ南にある県。県庁所在地は盛岡市。",4:"東北地方の太平洋側にある県。県庁所在地は仙台市。",5:"日本海側にある東北地方の県。県庁所在地は秋田市。",6:"山形県のとなりには日本海があるよ。県庁所在地は山形市。",7:"東北地方のいちばん南にある県。県庁所在地は福島市。",8:"関東地方の太平洋側にある県。県庁所在地は水戸市。",9:"関東地方の北部にある県。県庁所在地は宇都宮市。",10:"群馬県は海のない内陸県。県庁所在地は前橋市。",11:"東京の北にある県。県庁所在地はさいたま市。",12:"関東地方の東側にある県。県庁所在地は千葉市。",13:"日本の首都がある都。東京都庁があるよ。",14:"東京の南にある県。県庁所在地は横浜市。",15:"日本海側に細長く広がる県。県庁所在地は新潟市。",16:"立山黒部アルペンルートでも知られる県。県庁所在地は富山市。",17:"能登半島がある県。県庁所在地は金沢市。",18:"日本海側にある県。県庁所在地は福井市。",19:"富士山の北西側にある県。県庁所在地は甲府市。",20:"日本アルプスがある内陸県。県庁所在地は長野市。",21:"日本のほぼ中央にある内陸県。県庁所在地は岐阜市。",22:"富士山の南側に広がる県。県庁所在地は静岡市。",23:"中部地方の太平洋側にある県。県庁所在地は名古屋市。",24:"紀伊半島の東側にある県。県庁所在地は津市。",25:"日本最大の湖、琵琶湖がある県。県庁所在地は大津市。",26:"京都市がある府。歴史的な建物が多い地域だよ。",27:"大阪市がある府。近畿地方の中心のひとつだよ。",28:"日本海から瀬戸内海まで広がる県。県庁所在地は神戸市。",29:"紀伊半島の内陸側にある県。県庁所在地は奈良市。",30:"紀伊半島の南側にある県。県庁所在地は和歌山市。",31:"中国地方の日本海側にある県。県庁所在地は鳥取市。",32:"中国地方の日本海側で東西に長い県。県庁所在地は松江市。",33:"中国地方の東側にある県。県庁所在地は岡山市。",34:"中国地方の瀬戸内海側にある県。県庁所在地は広島市。",35:"本州のいちばん西にある県。県庁所在地は山口市。",36:"四国の東側にある県。県庁所在地は徳島市。",37:"四国の北東側にある県。県庁所在地は高松市。",38:"四国の北西側にある県。県庁所在地は松山市。",39:"四国の南側にある県。県庁所在地は高知市。",40:"九州の北側にある県。県庁所在地は福岡市。",41:"九州の北西部にある県。県庁所在地は佐賀市。",42:"九州の西側にある県。県庁所在地は長崎市。",43:"九州の中央部にある県。県庁所在地は熊本市。",44:"九州の東側にある県。県庁所在地は大分市。",45:"九州の東側で南北に長い県。県庁所在地は宮崎市。",46:"九州の南側にある県。県庁所在地は鹿児島市。",47:"日本のいちばん南西にある県。県庁所在地は那覇市。"};
 
@@ -452,7 +466,7 @@ function distFrom(start){if(distCache[start])return distCache[start];const d={[s
 /* ===== 学習記録（localStorage） ===== */
 const STORE_KEY="jpMaster";
 function loadState(){
-  const s={v:2,viewed:[],mastered:[],correct:0,total:0,streak:0,best:0,region:"全国",order:"number",sound:true};
+  const s={v:2,viewed:[],mastered:[],cap:{viewed:[],mastered:[]},correct:0,total:0,streak:0,best:0,region:"全国",order:"number",topic:"pref",sound:true};
   let raw=null;
   try{raw=JSON.parse(localStorage.getItem(STORE_KEY)||"null")}catch(e){raw=null}
   if(raw&&typeof raw==="object"){
@@ -465,6 +479,8 @@ function loadState(){
     if(typeof raw.region==="string"&&REGION_LIST.some(r=>r.key===raw.region))s.region=raw.region;
     if(raw.order==="random"||raw.order==="number")s.order=raw.order;
     if(raw.sound===false)s.sound=false;
+    if(raw.topic==="capital")s.topic="capital";
+    if(raw.cap&&typeof raw.cap==="object"){s.cap.viewed=codes(raw.cap.viewed);s.cap.mastered=codes(raw.cap.mastered)}
   }
   return s;
 }
@@ -504,13 +520,16 @@ const SFX={
 function sfx(name){if(state.sound&&SFX[name])try{SFX[name]()}catch(e){}}
 function renderSoundBtn(){const b=$("soundBtn");b.textContent=state.sound?"🔊":"🔇";b.setAttribute("aria-pressed",state.sound);b.setAttribute("aria-label",state.sound?"効果音：オン":"効果音：オフ");b.title=b.getAttribute("aria-label")}
 function toggleSound(){state.sound=!state.sound;save();renderSoundBtn();sfx("tap")}
-const learnedSet=()=>new Set([...state.viewed,...state.mastered]);
+/* いまの「おぼえるもの」（都道府県 or 県庁所在地）の学習記録 */
+const isCap=()=>state.topic==="capital";
+const topicRec=()=>isCap()?state.cap:state;
+const learnedSet=()=>new Set([...topicRec().viewed,...topicRec().mastered]);
 const accuracyText=()=>(state.total?Math.round(state.correct/state.total*100):0)+"%";
 
 /* ===== 画面の状態 ===== */
 const $=id=>document.getElementById(id);
 let mode="learn",learnIndex=0;
-let round={deck:[],i:0,score:0,target:null,answered:false,region:null,order:null};
+let round={deck:[],i:0,score:0,target:null,answered:false,region:null,order:null,topic:null};
 const currentRegion=()=>regionByKey(state.region);
 const currentList=()=>currentRegion().codes;
 
@@ -525,8 +544,15 @@ function measureMap(){
     const inv=svg.getScreenCTM().inverse();let ux1=1e9,uy1=1e9,ux2=-1e9,uy2=-1e9;
     svg.querySelectorAll(".prefecture").forEach(g=>{
       const code=Number(g.getAttribute("data-code"));let main=null,all=null;
+      /* 島をふくむ1本のパス（東京都など）は、M ごとの部分に分けて測る（いちばん大きい部分＝本土を main に） */
+      const shapes=[];
       g.querySelectorAll("polygon,path").forEach(sh=>{
-        const b=sh.getBBox(),m=inv.multiply(sh.getScreenCTM());
+        const subs=sh.tagName==="path"?(sh.getAttribute("d")||"").split(/(?=M)/).filter(x=>x.trim()):[];
+        if(subs.length<2){shapes.push(sh);return}
+        subs.forEach(d=>{const c=sh.cloneNode(false);c.setAttribute("d",d);sh.parentNode.appendChild(c);shapes.push(c);c._tmp=true});
+      });
+      shapes.forEach(sh=>{
+        const b=sh.getBBox(),m=inv.multiply(sh.getScreenCTM());if(sh._tmp)sh.remove();
         const pts=[[b.x,b.y],[b.x+b.width,b.y],[b.x,b.y+b.height],[b.x+b.width,b.y+b.height]].map(([x,y])=>[m.a*x+m.c*y+m.e,m.b*x+m.d*y+m.f]);
         const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
         const bx={x:Math.min(...xs),y:Math.min(...ys)};bx.w=Math.max(...xs)-bx.x;bx.h=Math.max(...ys)-bx.y;
@@ -549,7 +575,34 @@ function viewFor(code){
   const box=list.filter(c=>c!==47||list.length===1).map(c=>BOX[c].main).reduce(union);
   return padBox(box,.12,190);
 }
-function setViewBox(svg,b){svg.setAttribute("viewBox",`${b.x.toFixed(1)} ${b.y.toFixed(1)} ${b.w.toFixed(1)} ${b.h.toFixed(1)}`);svg._vb=b}
+function setViewBox(svg,b){svg.setAttribute("viewBox",`${b.x.toFixed(1)} ${b.y.toFixed(1)} ${b.w.toFixed(1)} ${b.h.toFixed(1)}`);svg._vb=b;updateLabels(svg)}
+/* 覚えるモードの地図の県名：拡大しても文字の大きさは同じ。重なるときは大きい県・えらんでいる地方を優先して表示 */
+function addLabels(svg){
+  if(!BOX)return;
+  const g=document.createElementNS("http://www.w3.org/2000/svg","g");g.setAttribute("class","pref-labels");g.setAttribute("aria-hidden","true");
+  svg._labels=range(1,47).map(code=>{
+    const b=BOX[code].main,t=document.createElementNS("http://www.w3.org/2000/svg","text");
+    t.setAttribute("x",(b.x+b.w/2).toFixed(1));t.setAttribute("y",(b.y+b.h/2).toFixed(1));t.textContent=shortName(code);g.appendChild(t);
+    return{code,t,cx:b.x+b.w/2,cy:b.y+b.h/2,area:b.w*b.h,len:shortName(code).length};
+  });
+  svg.appendChild(g);svg._labelG=g;
+}
+function updateLabels(svg){
+  const L=svg._labels,v=svg._vb;if(!L||!v)return;
+  const r=svg.getBoundingClientRect();if(!r.width)return;
+  const upp=Math.max(v.w/r.width,v.h/r.height),fs=(r.width<500?11:13)*upp;
+  svg._labelG.setAttribute("font-size",fs.toFixed(2));svg._labelG.setAttribute("stroke-width",(3.2*upp).toFixed(2));
+  const list=currentList(),inList=new Set(list),target=svg._paint?.code,focus=list.length<47;
+  const order=L.slice().sort((a,b)=>(b.code===target)-(a.code===target)||(inList.has(b.code)-inList.has(a.code))||b.area-a.area);
+  const placed=[];
+  for(const l of order){
+    const w=l.len*fs*1.02/2+fs*.15,h=fs*.62;
+    const inView=l.cx>v.x&&l.cx<v.x+v.w&&l.cy>v.y&&l.cy<v.y+v.h;
+    const ok=inView&&!placed.some(p=>Math.abs(p.cx-l.cx)<p.w+w&&Math.abs(p.cy-l.cy)<p.h+h);
+    if(ok)placed.push({cx:l.cx,cy:l.cy,w,h});
+    l.t.classList.toggle("hide",!ok);l.t.classList.toggle("out",focus&&!inList.has(l.code));l.t.classList.toggle("now",l.code===target);
+  }
+}
 function animateViewBox(svg,to){
   const from=svg._vb||FULL_BOX;cancelAnimationFrame(svg._raf);
   const same=["x","y","w","h"].every(k=>Math.abs(from[k]-to[k])<.5);
@@ -612,7 +665,11 @@ function zoomMap(id,dir){
   const svg=$(id)?.querySelector("svg");if(!svg||!svg._vb)return;
   let to;
   if(dir==="reset"){svg._userZoom=false;to=viewFor(svg._paint?.code)}
-  else{const v=svg._vb;to=zoomView(v,dir==="in"?1/1.6:1.6,v.x+v.w/2,v.y+v.h/2);svg._userZoom=true}
+  else{
+    const v=svg._vb,b=BOX&&svg._paint?.code?BOX[svg._paint.code].main:null;
+    const z=zoomView(v,dir==="in"?1/1.6:1.6,v.x+v.w/2,v.y+v.h/2); /* 大きさだけ決めて、中心は選んでいる県に */
+    to=b?clampPan({x:b.x+b.w/2-z.w/2,y:b.y+b.h/2-z.h/2,w:z.w,h:z.h}):z;svg._userZoom=true;
+  }
   sfx(dir==="in"?"zoomIn":dir==="out"?"zoomOut":"reset");
   animateViewBox(svg,to);refreshRing(svg,to);
 }
@@ -685,6 +742,7 @@ function loadJapanMaps(){
     if(id==="quizMap"){svg.setAttribute("role","img");svg.setAttribute("aria-label","日本地図。黄色い県をさがしてね")}
     const ring=document.createElementNS("http://www.w3.org/2000/svg","g");
     ring.setAttribute("class","target-ring hidden");
+    if(id==="japanMap")addLabels(svg); /* 答えるモードの地図には県名を出さない */
     ring.innerHTML='<circle class="halo"/><circle class="ring"/>';svg.appendChild(ring);
     setViewBox(svg,FULL_BOX);
     enableMapZoom(host,svg);
@@ -698,8 +756,10 @@ function renderLearn(){
   const list=currentList();if(learnIndex<0||learnIndex>=list.length)learnIndex=0;
   const code=list[learnIndex],p=getPref(code),r=regionOf(code);
   $("learnNumber").textContent=pad(code);
-  $("learnName").textContent=p.name;
-  $("learnRuby").textContent=p.ruby;
+  const cap=isCap(),item=cap?getCap(code):p;
+  $("learnSub").hidden=!cap;$("learnSub").textContent=cap?`${p.name}の 県庁所在地`:"";
+  $("learnName").textContent=item.name;
+  $("learnRuby").textContent=item.ruby;
   $("learnPlace").textContent=r.key+"地方";$("learnPlace").dataset.region=r.slug;
   $("learnFact").textContent=facts[code]||"";
   $("learnStep").textContent=`${learnIndex+1} / ${list.length}`;
@@ -708,7 +768,7 @@ function renderLearn(){
   else prog.innerHTML=`<div class="bar"><i style="width:${(learnIndex+1)/list.length*100}%"></i></div>`;
   $("prevBtn").disabled=learnIndex===0;
   $("nextBtn").textContent=learnIndex===list.length-1?"ゴール 🎉":"つぎ →";
-  if(!state.viewed.includes(code)){state.viewed.push(code);save()}
+  if(!topicRec().viewed.includes(code)){topicRec().viewed.push(code);save()}
   mapPaint("japanMap",code);
 }
 function learnNext(){const list=currentList();if(learnIndex<list.length-1){learnIndex++;sfx("next");renderLearn()}else showRegionClear()}
@@ -729,7 +789,7 @@ function showRegionClear(){
   confetti();
 }
 function speak(){
-  const code=currentList()[learnIndex],p=getPref(code);
+  const code=currentList()[learnIndex],p=isCap()?getCap(code):getPref(code);
   if(!("speechSynthesis" in window))return;
   try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(p.ruby);u.lang="ja-JP";u.rate=.85;
     const v=speechSynthesis.getVoices().find(v=>/^ja/i.test(v.lang));if(v)u.voice=v;speechSynthesis.speak(u)}catch(e){}
@@ -740,7 +800,7 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 function startRound(){
   const list=currentList();
   const deck=state.order==="number"?list.slice():shuffle(list.slice()).slice(0,Math.min(10,list.length));
-  round={deck,i:0,score:0,target:null,answered:false,region:state.region,order:state.order};
+  round={deck,i:0,score:0,target:null,answered:false,region:state.region,order:state.order,topic:state.topic};
   newQuestion();
 }
 function nearestChoices(target,list){
@@ -758,7 +818,10 @@ function newQuestion(){
   $("quizBar").style.width=(round.i/round.deck.length*100)+"%";
   const choices=shuffle([target,...nearestChoices(target,list)]);
   const box=$("answers");
-  box.innerHTML=choices.map((c,i)=>{const p=getPref(c);return`<button class="answer" type="button" data-sfx="own" data-code="${c}"><span class="key">${i+1}</span>${p.name}<span class="ruby">${p.ruby}</span></button>`}).join("");
+  const cap=isCap(),tp=getPref(target);
+  $("quizTitle").textContent=cap?`${tp.name}の 県庁所在地は？`:"この県はどこ？";
+  $("quizHint").innerHTML=cap?"<i></i>黄色い県の 県庁所在地を選んでね！":"<i></i>地図の黄色い県を選んでね！";
+  box.innerHTML=choices.map((c,i)=>{const p=cap?getCap(c):getPref(c);return`<button class="answer" type="button" data-sfx="own" data-code="${c}"><span class="key">${i+1}</span>${p.name}<span class="ruby">${p.ruby}</span></button>`}).join("");
   box.querySelectorAll(".answer").forEach(b=>b.addEventListener("click",()=>answer(Number(b.dataset.code),b)));
   mapPaint("quizMap",target);
   updateStats();
@@ -773,15 +836,15 @@ function answer(code,btn){
   const fb=$("feedback"),stamp=$("stamp");
   if(good){
     state.correct++;state.streak++;state.best=Math.max(state.best,state.streak);round.score++;
-    if(!state.mastered.includes(target))state.mastered.push(target);
+    if(!topicRec().mastered.includes(target))topicRec().mastered.push(target);
     const word=PRAISE[Math.floor(Math.random()*PRAISE.length)];
-    fb.innerHTML=`🎉 ${word}<small>${p.name}（${p.ruby}）だよ</small>`;fb.className="feedback good";
+    fb.innerHTML=isCap()?`🎉 ${word}<small>${p.name}の 県庁所在地は ${getCap(target).name}（${getCap(target).ruby}）</small>`:`🎉 ${word}<small>${p.name}（${p.ruby}）だよ</small>`;fb.className="feedback good";
     stamp.textContent=state.streak>=3?`🔥${state.streak}連続！`:word;stamp.className="stamp good";
     mapPaint("quizMap",target,"correct");confetti(state.streak>=5?80:45);
     sfx("correct");if(state.streak>=3)sfx("streak");
   }else{
     state.streak=0;btn.classList.add("wrong");
-    fb.innerHTML=`おしい！ せいかいは ${p.name}<small>${getPref(code).name}は うすい赤の県だよ。つぎはきっとできる！</small>`;fb.className="feedback bad";
+    fb.innerHTML=isCap()?`おしい！ せいかいは ${getCap(target).name}<small>${getCap(code).name}は ${getPref(code).name}（うすい赤の県）の県庁所在地だよ。つぎはきっとできる！</small>`:`おしい！ せいかいは ${p.name}<small>${getPref(code).name}は うすい赤の県だよ。つぎはきっとできる！</small>`;fb.className="feedback bad";
     stamp.textContent="おしい！";stamp.className="stamp bad";
     mapPaint("quizMap",target,"correct",code);
     sfx("wrong");
@@ -812,13 +875,24 @@ function orderHTML(attr){return[["number","🔢 じゅんばん"],["random","�
 function renderRegionChips(){
   $("regionChips").innerHTML=chipsHTML("data-r",state.region);
   $("menuRegions").innerHTML=chipsHTML("data-menu-region",state.region);
+  $("topicChips").innerHTML=topicHTML("data-topic");
+  $("menuTopic").innerHTML=topicHTML("data-menu-topic");
   $("orderChips").innerHTML=orderHTML("data-order");
   $("menuOrder").innerHTML=orderHTML("data-menu-order");
   document.querySelectorAll("[data-r],[data-menu-region]").forEach(b=>b.addEventListener("click",()=>{setRegion(b.dataset.r||b.dataset.menuRegion);if(b.dataset.menuRegion)closeMenu()}));
+  document.querySelectorAll("[data-topic],[data-menu-topic]").forEach(b=>b.addEventListener("click",()=>{setTopic(b.dataset.topic||b.dataset.menuTopic);if(b.dataset.menuTopic)closeMenu()}));
+  updateTopicText();
   document.querySelectorAll("[data-order],[data-menu-order]").forEach(b=>b.addEventListener("click",()=>{setOrder(b.dataset.order||b.dataset.menuOrder);if(b.dataset.menuOrder)closeMenu()}));
   updateModePill();
 }
 function setRegion(key){state.region=regionByKey(key).key;learnIndex=0;save();renderRegionChips();if(mode==="learn")renderLearn();else startRound()}
+function topicHTML(attr){return[["pref","🗾 都道府県"],["capital","🏯 県庁所在地"]].map(([k,l])=>`<button class="chip plain ${state.topic===k?"active":""}" type="button" ${attr}="${k}" aria-pressed="${state.topic===k}">${l}</button>`).join("")}
+function setTopic(t){state.topic=t==="capital"?"capital":"pref";save();renderRegionChips();if(mode==="learn")renderLearn();else startRound()}
+function updateTopicText(){
+  const cap=isCap();
+  $("learnTabSub").textContent=cap?"県庁所在地を じゅんばんに":"地図をみながら じゅんばんに";
+  $("quizTabSub").textContent=cap?"黄色い県の 県庁所在地は？":"黄色い県はどこ？ 4たくクイズ";
+}
 function setOrder(o){state.order=o==="random"?"random":"number";save();renderRegionChips();if(mode==="quiz")startRound()}
 function setMode(m){
   mode=m==="quiz"?"quiz":"learn";
@@ -826,13 +900,13 @@ function setMode(m){
   document.querySelectorAll(".tab").forEach(t=>{const on=t.dataset.mode===mode;t.classList.toggle("active",on);t.setAttribute("aria-pressed",on)});
   document.querySelectorAll(".menu-mode").forEach(t=>t.classList.toggle("active",t.dataset.menuMode===mode));
   document.querySelectorAll(".mode-panel").forEach(p=>p.classList.toggle("active",p.id===mode));
-  if(mode==="quiz"){if(!round.deck.length||round.region!==state.region||round.order!==state.order||round.i>=round.deck.length)startRound();else mapPaint("quizMap",round.target,round.answered?"correct":"target")}
+  if(mode==="quiz"){if(!round.deck.length||round.region!==state.region||round.order!==state.order||round.topic!==state.topic||round.i>=round.deck.length)startRound();else mapPaint("quizMap",round.target,round.answered?"correct":"target")}
   else renderLearn();
   updateModePill();
 }
 function updateModePill(){
   const r=currentRegion();$("modePill").dataset.region=r.slug;
-  $("modePillText").textContent=(mode==="quiz"?"🎤 答える":"📚 覚える")+"・"+r.key;
+  $("modePillText").textContent=(mode==="quiz"?"🎤 答える":"📚 覚える")+(isCap()?"（県庁）":"")+"・"+r.key;
 }
 
 /* ===== 学習状況・きろく ===== */
@@ -844,8 +918,9 @@ function updateStats(){
   renderRecords();
 }
 function renderRecords(){
-  const viewed=new Set(state.viewed),mastered=new Set(state.mastered);
-  $("recordTiles").innerHTML=[["⭐ "+learnedSet().size,"学習した県 /47"],["🏆 "+mastered.size,"クイズで正解 /47"],["🎯 "+accuracyText(),`正解率（${state.correct}/${state.total}問）`],["🔥 "+state.best,"さいこう連続"]].map(([v,l])=>`<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
+  const viewed=new Set(topicRec().viewed),mastered=new Set(topicRec().mastered);
+  $("recordsTitle").textContent=isCap()?"📊 きろく（県庁所在地）":"📊 きろく（都道府県）";
+  $("recordTiles").innerHTML=[["⭐ "+learnedSet().size,"学習した"+(isCap()?"県庁所在地":"県")+" /47"],["🏆 "+mastered.size,"クイズで正解 /47"],["🎯 "+accuracyText(),`正解率（${state.correct}/${state.total}問）`],["🔥 "+state.best,"さいこう連続"]].map(([v,l])=>`<div class="tile"><div class="v">${v}</div><div class="l">${l}</div></div>`).join("");
   $("recordSummary").innerHTML=REGIONS.map(r=>{
     const m=r.codes.filter(c=>mastered.has(c)).length;
     return`<div class="rgroup" data-region="${r.slug}"><h3>${r.key}<span class="cnt">${m}/${r.codes.length}</span>${m===r.codes.length?'<span class="medal">🏅 せいは！</span>':""}</h3><div class="pchips">${r.codes.map(c=>{const cls=mastered.has(c)?"mastered":viewed.has(c)?"viewed":"";return`<button class="pchip ${cls}" type="button" data-jump="${c}" title="${getPref(c).ruby}">${pad(c)} ${getPref(c).name}</button>`}).join("")}</div></div>`}).join("");
@@ -854,7 +929,7 @@ function renderRecords(){
 function clearData(){
   showModal({emoji:"🗑️",title:"きろくを ぜんぶ消す？",text:"学習した県や正解率が 0 にもどるよ",buttons:[
     {label:"やめる",cls:"btn-ghost",fn:()=>{}},
-    {label:"消す",cls:"btn-danger",fn:()=>{Object.assign(state,{viewed:[],mastered:[],correct:0,total:0,streak:0,best:0});save();learnIndex=0;renderLearn()}}]});
+    {label:"消す",cls:"btn-danger",fn:()=>{Object.assign(state,{viewed:[],mastered:[],cap:{viewed:[],mastered:[]},correct:0,total:0,streak:0,best:0});save();learnIndex=0;renderLearn()}}]});
 }
 
 /* ===== メニュー・モーダル・演出 ===== */
