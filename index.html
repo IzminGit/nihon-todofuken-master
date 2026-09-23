@@ -49,6 +49,8 @@ button:focus-visible,[tabindex]:focus-visible{outline:4px solid #ffbf00;outline-
 .stat b{font-size:1.15rem;color:var(--ink)}
 .mode-pill{display:none;align-items:center;gap:6px;border:0;background:var(--accent-soft);color:var(--accent-dark);border-radius:999px;padding:6px 14px;font-weight:800;font-size:.95rem;cursor:pointer}
 .mode-pill i{font-style:normal;width:10px;height:10px;border-radius:50%;background:var(--c)}
+.sound-btn{width:44px;height:44px;border-radius:14px;border:0;background:#fff;box-shadow:0 3px 0 #d3e2ef,0 0 0 2px #e1ebf4 inset;cursor:pointer;font-size:1.3rem;display:grid;place-items:center;flex:none;touch-action:manipulation}
+.sound-btn[aria-pressed="false"]{opacity:.6}
 .menu-btn{display:none;width:44px;height:44px;margin-left:auto;border-radius:14px;border:0;background:#fff;box-shadow:0 3px 0 #d3e2ef,0 0 0 2px #e1ebf4 inset;cursor:pointer;place-items:center;flex:none}
 .menu-btn span,.menu-btn span::before,.menu-btn span::after{display:block;width:20px;height:3px;border-radius:3px;background:var(--ink);position:relative;content:""}
 .menu-btn span::before{position:absolute;top:-7px}.menu-btn span::after{position:absolute;top:7px}
@@ -258,7 +260,8 @@ body.mode-learn .order-group{display:none}
   .topbar-inner{padding:6px 8px 6px 10px;gap:8px;min-height:56px}
   .brand,.stats{display:none}
   .mode-pill{display:inline-flex}
-  .menu-btn{display:grid}
+  .menu-btn{display:grid;margin-left:0}
+  .sound-btn{margin-left:auto}
   .app{flex:1;min-height:0;width:100%;padding:8px 8px calc(8px + env(safe-area-inset-bottom));display:flex;flex-direction:column}
   .mode-tabs,.controls,.info-top,.fact,.info-foot,.map-tip,.q-hint{display:none}
   .mode-panel.active{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -319,6 +322,7 @@ body.mode-learn .order-group{display:none}
       <div class="stat">🔥 <b id="streak">0</b>連続</div>
     </div>
     <button class="mode-pill" id="modePill" type="button" data-region="all"><i></i><span id="modePillText">📚 覚える・全国</span></button>
+    <button class="sound-btn" id="soundBtn" type="button" data-sfx="own" aria-pressed="true" aria-label="効果音：オン" title="効果音：オン">🔊</button>
     <button class="menu-btn" id="mobileMenuButton" type="button" aria-label="メニュー" aria-expanded="false" aria-controls="mobileMenu"><span></span></button>
   </div>
 </header>
@@ -347,13 +351,13 @@ body.mode-learn .order-group{display:none}
             <div class="pref-name" id="learnName">北海道</div>
             <div class="pref-ruby" id="learnRuby">ほっかいどう</div>
           </div>
-          <button class="btn btn-ghost btn-small speak" id="speakBtn" type="button" aria-label="読みあげる"><span class="speak-ico">🔊</span><span class="lbl">よみあげ</span></button>
+          <button class="btn btn-ghost btn-small speak" data-sfx="own" id="speakBtn" type="button" aria-label="読みあげる"><span class="speak-ico">🔊</span><span class="lbl">よみあげ</span></button>
         </div>
         <div class="fact"><span class="fact-label">💡 まめちしき</span><span id="learnFact"></span></div>
         <div class="progress" id="learnProgress" aria-hidden="true"></div>
         <div class="nav">
-          <button class="btn btn-ghost" id="prevBtn" type="button">← まえ</button>
-          <button class="btn btn-primary" id="nextBtn" type="button">つぎ →</button>
+          <button class="btn btn-ghost" data-sfx="own" id="prevBtn" type="button">← まえ</button>
+          <button class="btn btn-primary" data-sfx="own" id="nextBtn" type="button">つぎ →</button>
         </div>
         <div class="info-foot"><button class="link-btn" id="resetLearn" type="button">↺ この地方を さいしょから</button></div>
       </div>
@@ -372,7 +376,7 @@ body.mode-learn .order-group{display:none}
         <div class="answers" id="answers"></div>
         <div class="feedback-row">
           <div class="feedback" id="feedback" aria-live="polite"></div>
-          <button class="btn btn-primary" id="nextQuestion" type="button" hidden>つぎの問題 →</button>
+          <button class="btn btn-primary" data-sfx="own" id="nextQuestion" type="button" hidden>つぎの問題 →</button>
         </div>
       </div>
     </div>
@@ -448,7 +452,7 @@ function distFrom(start){if(distCache[start])return distCache[start];const d={[s
 /* ===== 学習記録（localStorage） ===== */
 const STORE_KEY="jpMaster";
 function loadState(){
-  const s={v:2,viewed:[],mastered:[],correct:0,total:0,streak:0,best:0,region:"全国",order:"number"};
+  const s={v:2,viewed:[],mastered:[],correct:0,total:0,streak:0,best:0,region:"全国",order:"number",sound:true};
   let raw=null;
   try{raw=JSON.parse(localStorage.getItem(STORE_KEY)||"null")}catch(e){raw=null}
   if(raw&&typeof raw==="object"){
@@ -460,11 +464,46 @@ function loadState(){
     s.best=Math.max(s.best,s.streak);
     if(typeof raw.region==="string"&&REGION_LIST.some(r=>r.key===raw.region))s.region=raw.region;
     if(raw.order==="random"||raw.order==="number")s.order=raw.order;
+    if(raw.sound===false)s.sound=false;
   }
   return s;
 }
 const state=loadState();
 function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(state))}catch(e){}updateStats()}
+
+/* ===== 効果音（Web Audio で合成・音声ファイルなし） ===== */
+let audioCtx=null;
+function ac(){
+  if(!audioCtx){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;try{audioCtx=new C()}catch(e){return null}}
+  if(audioCtx.state==="suspended")audioCtx.resume();
+  return audioCtx;
+}
+/* f: 周波数（Hz）, t: 開始までの秒, d: 長さ（秒）, to: 最後の周波数（音程をすべらせる） */
+function tone(f,t=0,d=.12,{type="sine",vol=.18,to=null}={}){
+  const c=ac();if(!c)return;
+  const s=c.currentTime+t,o=c.createOscillator(),g=c.createGain();
+  o.type=type;o.frequency.setValueAtTime(f,s);if(to)o.frequency.exponentialRampToValueAtTime(to,s+d);
+  g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(vol,s+.01);g.gain.exponentialRampToValueAtTime(.001,s+d);
+  o.connect(g).connect(c.destination);o.start(s);o.stop(s+d+.02);
+}
+const SFX={
+  tap:()=>tone(620,0,.07,{to:900,vol:.14}),
+  next:()=>{tone(784,0,.08,{type:"triangle"});tone(1175,.07,.12,{type:"triangle"})},
+  prev:()=>{tone(1175,0,.08,{type:"triangle"});tone(784,.07,.12,{type:"triangle"})},
+  pick:()=>tone(440,0,.14,{to:1200,vol:.16}),
+  zoomIn:()=>tone(500,0,.13,{to:1000,type:"triangle",vol:.13}),
+  zoomOut:()=>tone(1000,0,.13,{to:500,type:"triangle",vol:.13}),
+  reset:()=>{tone(900,0,.08,{type:"triangle",vol:.12});tone(600,.07,.1,{type:"triangle",vol:.12})},
+  correct:()=>{tone(1319,0,.35,{vol:.2});tone(2637,0,.35,{vol:.04});tone(1047,.16,.6,{vol:.2});tone(2093,.16,.6,{vol:.04})},
+  streak:()=>[1568,1976,2349,3136].forEach((f,i)=>tone(f,.5+i*.06,.18,{type:"triangle",vol:.1})),
+  wrong:()=>{tone(330,0,.18,{type:"triangle",to:250,vol:.22});tone(260,.2,.32,{type:"triangle",to:170,vol:.22})},
+  fanfare:()=>{[523,659,784].forEach((f,i)=>tone(f,i*.12,.14,{type:"triangle",vol:.16}));
+    [523,659,784,1047].forEach(f=>tone(f,.38,.8,{type:"triangle",vol:.1}));
+    [2093,2637,3136].forEach((f,i)=>tone(f,.45+i*.08,.2,{vol:.05}))},
+};
+function sfx(name){if(state.sound&&SFX[name])try{SFX[name]()}catch(e){}}
+function renderSoundBtn(){const b=$("soundBtn");b.textContent=state.sound?"🔊":"🔇";b.setAttribute("aria-pressed",state.sound);b.setAttribute("aria-label",state.sound?"効果音：オン":"効果音：オフ");b.title=b.getAttribute("aria-label")}
+function toggleSound(){state.sound=!state.sound;save();renderSoundBtn();sfx("tap")}
 const learnedSet=()=>new Set([...state.viewed,...state.mastered]);
 const accuracyText=()=>(state.total?Math.round(state.correct/state.total*100):0)+"%";
 
@@ -544,8 +583,8 @@ function mapPaint(id,code,how="target",wrongCode=null){
   if(el){const hadFocus=document.activeElement===el;el.classList.add(how);el.parentNode.appendChild(el);if(hadFocus)el.focus({preventScroll:true})}
   /* 同じ県のままなら（答えた直後・画面回転など）自分で拡大した表示をそのまま残す */
   const keep=svg._userZoom&&svg._paint&&svg._paint.code===code&&svg._paint.region===state.region;
-  /* 覚えるモードで県が変わったとき（つぎ・まえ・地図タップ）は、自分で決めた縮尺のまま新しい県を真ん中に */
-  const follow=!keep&&id==="japanMap"&&svg._userZoom&&BOX&&code&&svg._paint&&svg._paint.region===state.region;
+  /* 県が変わったとき（つぎ・まえ・地図タップ・つぎの問題）は、自分で決めた縮尺のまま新しい県を真ん中に */
+  const follow=!keep&&svg._userZoom&&BOX&&code&&svg._paint&&svg._paint.region===state.region;
   svg._paint={code,how,region:state.region};
   if(keep){placeRing(svg,code,svg._vb,how);return}
   if(follow){
@@ -574,6 +613,7 @@ function zoomMap(id,dir){
   let to;
   if(dir==="reset"){svg._userZoom=false;to=viewFor(svg._paint?.code)}
   else{const v=svg._vb;to=zoomView(v,dir==="in"?1/1.6:1.6,v.x+v.w/2,v.y+v.h/2);svg._userZoom=true}
+  sfx(dir==="in"?"zoomIn":dir==="out"?"zoomOut":"reset");
   animateViewBox(svg,to);refreshRing(svg,to);
 }
 function enableMapZoom(host,svg){
@@ -621,7 +661,7 @@ function enableMapZoom(host,svg){
   const wrap=host.parentNode;wrap.querySelector(".zoom-ctrl")?.remove();
   const zc=document.createElement("div");zc.className="zoom-ctrl";
   zc.innerHTML=[["in","＋","地図をかくだい"],["out","－","地図をしゅくしょう"],["reset","↺","地図をもとの大きさにもどす"]]
-    .map(([k,t,l])=>`<button class="zoom-btn" type="button" data-zoom="${k}" aria-label="${l}" title="${l}">${t}</button>`).join("");
+    .map(([k,t,l])=>`<button class="zoom-btn" type="button" data-sfx="own" data-zoom="${k}" aria-label="${l}" title="${l}">${t}</button>`).join("");
   zc.querySelectorAll("[data-zoom]").forEach(b=>b.addEventListener("click",()=>zoomMap(host.id,b.dataset.zoom)));
   wrap.appendChild(zc);
 }
@@ -638,8 +678,8 @@ function loadJapanMaps(){
       if(id==="japanMap"){
         if(t)t.textContent=`${pref.name}（${pref.ruby}）`;
         p.setAttribute("tabindex","0");p.setAttribute("role","button");p.setAttribute("aria-label",pref.name);
-        p.addEventListener("click",()=>jumpTo(code));
-        p.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();jumpTo(code)}});
+        p.addEventListener("click",()=>{sfx("pick");jumpTo(code)});
+        p.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();sfx("pick");jumpTo(code)}});
       }else if(t)t.remove(); /* クイズの地図は答えが見えないよう県名のツールチップを消す */
     });
     if(id==="quizMap"){svg.setAttribute("role","img");svg.setAttribute("aria-label","日本地図。黄色い県をさがしてね")}
@@ -671,8 +711,8 @@ function renderLearn(){
   if(!state.viewed.includes(code)){state.viewed.push(code);save()}
   mapPaint("japanMap",code);
 }
-function learnNext(){const list=currentList();if(learnIndex<list.length-1){learnIndex++;renderLearn()}else showRegionClear()}
-function learnPrev(){if(learnIndex>0){learnIndex--;renderLearn()}}
+function learnNext(){const list=currentList();if(learnIndex<list.length-1){learnIndex++;sfx("next");renderLearn()}else showRegionClear()}
+function learnPrev(){if(learnIndex>0){learnIndex--;sfx("prev");renderLearn()}}
 function jumpTo(code){
   if(mode!=="learn")return;
   if(!currentList().includes(code)){state.region=regionOf(code).key;save();renderRegionChips()}
@@ -684,6 +724,7 @@ function showRegionClear(){
   const btns=[{label:"🎤 クイズにちょうせん！",cls:"btn-primary quizcolor",fn:()=>setMode("quiz")}];
   if(nxt)btns.push({label:`つぎは ${nxt}地方 →`,cls:"btn-ghost",fn:()=>setRegion(nxt)});
   btns.push({label:"↺ もういちど見る",cls:"btn-ghost",fn:()=>{learnIndex=0;renderLearn()}});
+  sfx("fanfare");
   showModal({emoji:"🎉",title:r.key==="全国"?"47都道府県 ぜんぶ見たね！":`${r.key}地方 ぜんぶ見たね！`,text:"つぎはクイズで たしかめてみよう",buttons:btns});
   confetti();
 }
@@ -717,7 +758,7 @@ function newQuestion(){
   $("quizBar").style.width=(round.i/round.deck.length*100)+"%";
   const choices=shuffle([target,...nearestChoices(target,list)]);
   const box=$("answers");
-  box.innerHTML=choices.map((c,i)=>{const p=getPref(c);return`<button class="answer" type="button" data-code="${c}"><span class="key">${i+1}</span>${p.name}<span class="ruby">${p.ruby}</span></button>`}).join("");
+  box.innerHTML=choices.map((c,i)=>{const p=getPref(c);return`<button class="answer" type="button" data-sfx="own" data-code="${c}"><span class="key">${i+1}</span>${p.name}<span class="ruby">${p.ruby}</span></button>`}).join("");
   box.querySelectorAll(".answer").forEach(b=>b.addEventListener("click",()=>answer(Number(b.dataset.code),b)));
   mapPaint("quizMap",target);
   updateStats();
@@ -737,11 +778,13 @@ function answer(code,btn){
     fb.innerHTML=`🎉 ${word}<small>${p.name}（${p.ruby}）だよ</small>`;fb.className="feedback good";
     stamp.textContent=state.streak>=3?`🔥${state.streak}連続！`:word;stamp.className="stamp good";
     mapPaint("quizMap",target,"correct");confetti(state.streak>=5?80:45);
+    sfx("correct");if(state.streak>=3)sfx("streak");
   }else{
     state.streak=0;btn.classList.add("wrong");
     fb.innerHTML=`おしい！ せいかいは ${p.name}<small>${getPref(code).name}は うすい赤の県だよ。つぎはきっとできる！</small>`;fb.className="feedback bad";
     stamp.textContent="おしい！";stamp.className="stamp bad";
     mapPaint("quizMap",target,"correct",code);
+    sfx("wrong");
   }
   void stamp.offsetWidth;stamp.classList.add("show");
   $("quizBar").style.width=((round.i+1)/round.deck.length*100)+"%";
@@ -750,7 +793,7 @@ function answer(code,btn){
   const sk=$("quizStreak");sk.classList.remove("bump");void sk.offsetWidth;if(good)sk.classList.add("bump");
   nb.focus({preventScroll:true});
 }
-function nextQuestion(){if(!round.answered)return;round.i++;if(round.i>=round.deck.length)showResult();else newQuestion()}
+function nextQuestion(){if(!round.answered)return;round.i++;if(round.i>=round.deck.length)showResult();else{sfx("next");newQuestion()}}
 function showResult(){
   const n=round.deck.length,s=round.score,ratio=s/n,stars=ratio===1?3:ratio>=.7?2:1;
   const msg=stars===3?"パーフェクト！ 天才だね！":stars===2?"すごい！ あと少しでパーフェクト！":"よくがんばったね！ もういちど やってみよう";
@@ -758,6 +801,7 @@ function showResult(){
   const nxt=nextRegionKey();
   if(stars===3&&nxt)btns.push({label:`つぎは ${nxt}地方 →`,cls:"btn-ghost",fn:()=>setRegion(nxt)});
   btns.push({label:"📚 覚えるモードで ふくしゅう",cls:"btn-ghost",fn:()=>setMode("learn")});
+  sfx("fanfare");
   showModal({emoji:stars===3?"🏆":stars===2?"🥈":"🌱",title:`${n}問中 ${s}問 せいかい！`,stars,text:msg,buttons:btns});
   if(stars===3)confetti(90);
 }
@@ -846,6 +890,9 @@ $("resetLearn").addEventListener("click",()=>{learnIndex=0;renderLearn()});
 $("speakBtn").addEventListener("click",speak);
 if(!("speechSynthesis" in window))$("speakBtn").hidden=true;
 $("nextQuestion").addEventListener("click",nextQuestion);
+$("soundBtn").addEventListener("click",toggleSound);
+/* そのほかのボタンは「ポン」とタップ音 */
+document.addEventListener("click",e=>{const b=e.target.closest("button");if(b&&!b.disabled&&b.dataset.sfx!=="own")sfx("tap")});
 $("clearData").addEventListener("click",clearData);
 $("mobileMenuButton").addEventListener("click",()=>$("mobileMenu").classList.contains("open")?closeMenu():openMenu());
 $("modePill").addEventListener("click",openMenu);
@@ -871,6 +918,7 @@ const MAP_SVG="<svg class=\"geolonia-svg-map\" viewBox=\"0 0 1000 1000\" xmlns=\
 
 renderRegionChips();
 updateStats();
+renderSoundBtn();
 loadJapanMaps();
 </script>
 </body>
