@@ -858,8 +858,8 @@ function newQuestion(){
   $("quizBar").style.width=(round.i/round.deck.length*100)+"%";
   const choices=shuffle([target,...nearestChoices(target,list)]);
   const box=$("answers");
-  const cap=isCap(),tp=getPref(target);
-  $("quizTitle").textContent=cap?`${tp.name}の 県庁所在地は？`:"この県はどこ？";
+  const cap=isCap();
+  $("quizTitle").textContent=cap?"県庁所在地は？":"この県はどこ？";
   $("quizHint").innerHTML=cap?"<i></i>黄色い県の 県庁所在地を選んでね！":"<i></i>地図の黄色い県を選んでね！";
   box.innerHTML=choices.map((c,i)=>{const p=cap?getCap(c):getPref(c);return`<button class="answer" type="button" data-sfx="own" data-code="${c}"><span class="key">${i+1}</span>${p.name}<span class="ruby">${p.ruby}</span></button>`}).join("");
   box.querySelectorAll(".answer").forEach(b=>b.addEventListener("click",()=>answer(Number(b.dataset.code),b)));
