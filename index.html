@@ -195,7 +195,7 @@ body.mode-learn .order-group{display:none}
 .feedback.good{color:var(--good)}
 .feedback.bad{color:#d6455c}
 .feedback small{display:block;font-size:.85rem;color:var(--muted)}
-#nextQuestion{flex:none}
+#nextQuestion{flex:none;gap:0}
 #nextQuestion[hidden]{display:none}
 
 /* ---------- きろく ---------- */
@@ -400,7 +400,7 @@ body.mode-learn .order-group{display:none}
         <div class="answers" id="answers"></div>
         <div class="feedback-row">
           <div class="feedback" id="feedback" aria-live="polite"></div>
-          <button class="btn btn-primary" data-sfx="own" id="nextQuestion" type="button" hidden>つぎ<span class="nq-long">の問題</span> →</button>
+          <button class="btn btn-primary" data-sfx="own" id="nextQuestion" type="button" hidden>つぎ<span class="nq-long">の問題</span>&nbsp;→</button>
         </div>
       </div>
     </div>
@@ -641,8 +641,8 @@ function updateLabels(svg){
   const order=L.slice().sort((a,b)=>(b.code===target)-(a.code===target)||(inList.has(b.code)-inList.has(a.code))||b.area-a.area);
   const placed=[];
   for(const l of order){
-    const w=l.wEm*fs/2+fs*.1,h=l.hEm*fs/2;
-    const inView=l.cx>v.x&&l.cx<v.x+v.w&&l.cy>v.y&&l.cy<v.y+v.h;
+    const w=l.wEm*fs/2+fs*.15,h=l.hEm*fs/2+fs*.2; /* 白いふちどりのぶんも少しあける */
+    const inView=l.cx-w+fs*.2>v.x&&l.cx+w-fs*.2<v.x+v.w&&l.cy-h+fs*.2>v.y&&l.cy+h-fs*.2<v.y+v.h; /* はしからはみ出して切れるラベルは出さない */
     const ok=inView&&!placed.some(p=>Math.abs(p.cx-l.cx)<p.w+w&&Math.abs(p.cy-l.cy)<p.h+h);
     if(ok)placed.push({cx:l.cx,cy:l.cy,w,h});
     l.g.classList.toggle("hide",!ok);l.g.classList.toggle("out",focus&&!inList.has(l.code));l.g.classList.toggle("now",l.code===target);
@@ -896,7 +896,7 @@ function answer(code,btn){
   }
   void stamp.offsetWidth;stamp.classList.add("show");
   $("quizBar").style.width=((round.i+1)/round.deck.length*100)+"%";
-  const nb=$("nextQuestion");nb.innerHTML=round.i===round.deck.length-1?"けっか<span class=\"nq-long\">を見る</span> 🏁":"つぎ<span class=\"nq-long\">の問題</span> →";nb.hidden=false;
+  const nb=$("nextQuestion");nb.innerHTML=round.i===round.deck.length-1?"けっか<span class=\"nq-long\">を見る</span>&nbsp;🏁":"つぎ<span class=\"nq-long\">の問題</span>&nbsp;→";nb.hidden=false;
   save();
   const sk=$("quizStreak");sk.classList.remove("bump");void sk.offsetWidth;if(good)sk.classList.add("bump");
   nb.focus({preventScroll:true});
