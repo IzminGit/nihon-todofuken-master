@@ -114,6 +114,12 @@ body.mode-learn .order-group{display:none}
 .target-ring.correct .ring,.target-ring.correct .halo{stroke:#1fae6a}
 .target-ring.hidden{display:none}
 @keyframes halo{from{transform:scale(1);opacity:.9}to{transform:scale(2.3);opacity:0}}
+.geo-map-host svg{touch-action:none;cursor:grab}
+.geo-map-host.dragging svg,.geo-map-host.dragging .prefecture{cursor:grabbing}
+.zoom-ctrl{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
+.zoom-btn{width:40px;height:40px;border:0;border-radius:12px;background:rgba(255,255,255,.92);color:var(--blue-dark);font:inherit;font-size:1.35rem;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 3px 0 #c9dbec;display:grid;place-items:center;touch-action:manipulation}
+.zoom-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #c9dbec}
+.zoom-btn:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
 .map-tip{position:absolute;left:12px;bottom:10px;background:rgba(255,255,255,.85);border-radius:999px;padding:3px 12px;font-size:.8rem;color:var(--muted);pointer-events:none}
 .stamp{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%) rotate(-6deg);padding:10px 26px;border-radius:22px;font-size:2.4rem;font-weight:800;color:#fff;white-space:nowrap;pointer-events:none;box-shadow:0 6px 0 rgba(0,0,0,.12);opacity:0}
 .stamp.good{background:var(--good)}
@@ -536,7 +542,82 @@ function mapPaint(id,code,how="target",wrongCode=null){
   if(wrongCode){const w=prefEl(host,wrongCode);if(w){w.classList.add("wrong");w.parentNode.appendChild(w)}}
   const el=code?prefEl(host,code):null;
   if(el){const hadFocus=document.activeElement===el;el.classList.add(how);el.parentNode.appendChild(el);if(hadFocus)el.focus({preventScroll:true})}
+  /* 同じ県のままなら（答えた直後・画面回転など）自分で拡大した表示をそのまま残す */
+  const keep=svg._userZoom&&svg._paint&&svg._paint.code===code&&svg._paint.region===state.region;
+  svg._paint={code,how,region:state.region};
+  if(keep){placeRing(svg,code,svg._vb,how);return}
+  svg._userZoom=false;
   const view=viewFor(code);animateViewBox(svg,view);placeRing(svg,code,view,how);
+}
+
+/* ===== 地図の拡大・縮小（ボタン・ホイール・ドラッグ・ピンチ） ===== */
+const ZOOM_MIN=45; /* 表示のはば（地図の座標）の下限＝いちばん大きく拡大したとき */
+function clampPan(v){ /* 地図が表示のはしから外へ逃げないようにする（全体より広いときは真ん中に） */
+  const F=FULL_BOX,fit=(p,s,a,l)=>s>=l?a+l/2-s/2:Math.min(Math.max(p,a),a+l-s);
+  return{x:fit(v.x,v.w,F.x,F.w),y:fit(v.y,v.h,F.y,F.h),w:v.w,h:v.h};
+}
+function zoomView(v,k,ux,uy){ /* (ux,uy) を中心に k 倍の範囲を表示（k<1 で拡大） */
+  k=Math.min(k,Math.max(1,FULL_BOX.w*1.15/v.w,FULL_BOX.h*1.15/v.h));
+  k=Math.max(k,Math.min(1,ZOOM_MIN/Math.min(v.w,v.h)));
+  return clampPan({x:ux-(ux-v.x)*k,y:uy-(uy-v.y)*k,w:v.w*k,h:v.h*k});
+}
+function refreshRing(svg,view){const p=svg._paint;if(p)placeRing(svg,p.code,view||svg._vb,p.how)}
+function applyUserView(svg,v){cancelAnimationFrame(svg._raf);setViewBox(svg,v);svg._userZoom=true;refreshRing(svg)}
+function zoomMap(id,dir){
+  const svg=$(id)?.querySelector("svg");if(!svg||!svg._vb)return;
+  let to;
+  if(dir==="reset"){svg._userZoom=false;to=viewFor(svg._paint?.code)}
+  else{const v=svg._vb;to=zoomView(v,dir==="in"?1/1.6:1.6,v.x+v.w/2,v.y+v.h/2);svg._userZoom=true}
+  animateViewBox(svg,to);refreshRing(svg,to);
+}
+function enableMapZoom(host,svg){
+  const pts=new Map();let moved=false,start=null;
+  const snap=()=>{const a=[...pts.values()];if(!a.length)return null;
+    if(a.length===1)return{x:a[0].x,y:a[0].y,d:0};
+    return{x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2,d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)}};
+  /* 指（マウス）の下にあった地点が、動かした先でも指の下にくるように表示を動かす */
+  const gesture=(p,n)=>{
+    const v=svg._vb,m=svg.getScreenCTM();if(!v||!m||!m.a)return;
+    const ax=(p.x-m.e)/m.a,ay=(p.y-m.f)/m.d,ox=m.a*v.x+m.e,oy=m.d*v.y+m.f;
+    const z=zoomView(v,p.d&&n.d?p.d/n.d:1,ax,ay),upp=z.w/v.w/m.a;
+    applyUserView(svg,clampPan({x:ax-(n.x-ox)*upp,y:ay-(n.y-oy)*upp,w:z.w,h:z.h}));
+  };
+  svg.addEventListener("pointerdown",e=>{
+    if(e.pointerType==="mouse"&&e.button!==0)return;
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===1){moved=false;start={x:e.clientX,y:e.clientY}}
+  });
+  svg.addEventListener("pointermove",e=>{
+    if(!pts.has(e.pointerId))return;
+    const p=snap();pts.set(e.pointerId,{x:e.clientX,y:e.clientY});const n=snap();
+    if(!moved){
+      if(pts.size<2&&Math.hypot(e.clientX-start.x,e.clientY-start.y)<6)return;
+      moved=true;host.classList.add("dragging");
+      pts.forEach((_,id)=>{try{svg.setPointerCapture(id)}catch(err){}});
+    }else if(pts.size>1)try{svg.setPointerCapture(e.pointerId)}catch(err){}
+    gesture(p,n);
+  });
+  const end=e=>{
+    if(!pts.delete(e.pointerId)||pts.size)return;
+    host.classList.remove("dragging");
+    if(moved){svg._suppressClick=true;setTimeout(()=>{svg._suppressClick=false},0)}
+  };
+  svg.addEventListener("pointerup",end);svg.addEventListener("pointercancel",end);
+  /* ドラッグで動かしたときは、県のタップ（クリック）として扱わない */
+  svg.addEventListener("click",e=>{if(svg._suppressClick){e.stopPropagation();e.preventDefault()}},true);
+  svg.addEventListener("wheel",e=>{
+    e.preventDefault();
+    const m=svg.getScreenCTM();if(!m||!m.a||!svg._vb)return;
+    const dy=e.deltaMode===1?e.deltaY*16:e.deltaY;
+    const k=Math.exp(Math.max(-120,Math.min(120,dy))*(e.ctrlKey?.01:.0025)); /* ctrl付き＝トラックパッドのピンチ */
+    applyUserView(svg,zoomView(svg._vb,k,(e.clientX-m.e)/m.a,(e.clientY-m.f)/m.d));
+  },{passive:false});
+  const wrap=host.parentNode;wrap.querySelector(".zoom-ctrl")?.remove();
+  const zc=document.createElement("div");zc.className="zoom-ctrl";
+  zc.innerHTML=[["in","＋","地図をかくだい"],["out","－","地図をしゅくしょう"],["reset","↺","地図をもとの大きさにもどす"]]
+    .map(([k,t,l])=>`<button class="zoom-btn" type="button" data-zoom="${k}" aria-label="${l}" title="${l}">${t}</button>`).join("");
+  zc.querySelectorAll("[data-zoom]").forEach(b=>b.addEventListener("click",()=>zoomMap(host.id,b.dataset.zoom)));
+  wrap.appendChild(zc);
 }
 function loadJapanMaps(){
   measureMap();
@@ -560,6 +641,7 @@ function loadJapanMaps(){
     ring.setAttribute("class","target-ring hidden");
     ring.innerHTML='<circle class="halo"/><circle class="ring"/>';svg.appendChild(ring);
     setViewBox(svg,FULL_BOX);
+    enableMapZoom(host,svg);
   });
   renderLearn();
   if($("quiz").classList.contains("active"))startRound();
@@ -768,6 +850,8 @@ document.addEventListener("keydown",e=>{
   if(e.key==="Escape"){if(!$("modal").hidden)closeModal();closeMenu();closeRecords();return}
   if(!$("modal").hidden||$("mobileMenu").classList.contains("open")||e.altKey||e.ctrlKey||e.metaKey)return;
   const onBtn=document.activeElement&&/^(BUTTON)$/.test(document.activeElement.tagName);
+  const zk={"+":"in",";":"in","=":"in","-":"out","0":"reset"}[e.key];
+  if(zk){zoomMap(mode==="learn"?"japanMap":"quizMap",zk);return}
   if(mode==="learn"){if(e.key==="ArrowRight")learnNext();else if(e.key==="ArrowLeft")learnPrev()}
   else{
     if(/^[1-4]$/.test(e.key)&&!round.answered){const b=$("answers").children[Number(e.key)-1];if(b)b.click()}
